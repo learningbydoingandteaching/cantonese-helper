@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>粤语学习助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .btn-press:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <div class="bg-emerald-600 text-white p-4 pt-12 pb-6 shadow-md flex justify-between items-center z-10">
+        <div>
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i data-lucide="book-open"></i> 粤语学习助手
+            </h1>
+            <p class="text-xs opacity-80 mt-1">适配《现代粤语词典》拼音</p>
+        </div>
+        <button onclick="exportData()" class="text-xs bg-emerald-700 px-3 py-1 rounded-full hover:bg-emerald-800 transition">
+            备份数据
+        </button>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="flex-1 overflow-hidden relative">
+        
+        <!-- 查词页面 -->
+        <div id="page-search" class="h-full flex flex-col p-4 gap-4 transition-all duration-300">
+            <div class="flex gap-2">
+                <input type="text" id="searchInput" placeholder="输入汉字，如：去" 
+                       class="flex-1 p-3 rounded-xl border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg">
+                <button onclick="doSearch()" class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm btn-press">
+                    <i data-lucide="search"></i>
+                </button>
+            </div>
+
+            <!-- 结果卡片 -->
+            <div id="resultCard" class="hidden card p-6 flex flex-col items-center text-center animate-fade-in">
+                <div class="w-full flex justify-between items-start mb-2">
+                    <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">查询结果</span>
+                    <button onclick="toggleSave()" id="btnSave" class="text-slate-400 hover:text-red-500 transition btn-press">
+                        <i data-lucide="heart" id="iconHeart"></i>
+                    </button>
+                </div>
+                
+                <h2 id="resWord" class="text-6xl font-bold text-slate-800 mb-2"></h2>
+                <div id="resPinyin" class="text-2xl font-mono text-emerald-600 font-medium mb-6"></div>
+                
+                <button onclick="playAudio()" class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-6 py-3 rounded-full font-medium hover:bg-emerald-100 transition btn-press w-full justify-center">
+                    <i data-lucide="volume-2"></i> 听发音
+                </button>
+            </div>
+
+            <!-- 提示信息 -->
+            <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-slate-400 gap-2">
+                <i data-lucide="search" size="48" class="opacity-20 w-16 h-16"></i>
+                <p>输入汉字开始查询</p>
+            </div>
+        </div>
+
+        <!-- 生词本页面 -->
+        <div id="page-saved" class="h-full flex flex-col p-4 gap-4 hidden overflow-y-auto pb-24">
+            <h2 class="font-bold text-slate-700 text-lg">我的生词本</h2>
+            <div id="savedList" class="flex flex-col gap-3">
+                <!-- 列表项由 JS 生成 -->
+            </div>
+            <div id="emptySaved" class="hidden flex-col items-center justify-center text-slate-400 gap-2 py-20">
+                <i data-lucide="bookmark" class="opacity-20 w-16 h-16"></i>
+                <p>还没有收藏生词</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 底部 Tab -->
+    <div class="bg-white border-t border-slate-200 p-2 pb-6 flex justify-around text-xs text-slate-500 font-medium z-10">
+        <button onclick="switchTab('search')" id="tab-search" class="flex flex-col items-center gap-1 p-2 text-emerald-600 w-full">
+            <i data-lucide="search"></i> 查词典
+        </button>
+        <button onclick="switchTab('saved')" id="tab-saved" class="flex flex-col items-center gap-1 p-2 w-full">
+            <i data-lucide="book-open"></i> 生词本
+        </button>
+    </div>
+
+    <!-- 核心逻辑 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+
+        // --- 模拟数据库 (实际使用时这里会是几万行数据) ---
+        // 这里为了演示，只放了几个核心字，和拼音转换逻辑
+        const RAW_DICT = {
+            "做": "zou6",
+            "书": "syu1",
+            "去": "heoi3", // 原始粤拼
+            "你好": "nei5 hou2",
+            "唔该": "m4 goi1",
+            "中意": "zung1 ji3",
+            "食饭": "sik6 faan6"
+        };
+
+        // --- 拼音转换器 (核心算法) ---
+        function convertPinyin(word, jyutping) {
+            if (!jyutping) return "";
+            let custom = jyutping;
+            // 规则: eoi -> oey
+            custom = custom.replace(/eoi/g, 'oey');
+            // 规则: 去字的特殊处理 (3声 -> 5声)
+            if (word === '去' && custom.includes('3')) {
+                custom = custom.replace('3', '5');
+            }
+            return custom;
+        }
+
+        // --- 应用状态 ---
+        let currentWord = null;
+        let savedWords = JSON.parse(localStorage.getItem('canto_saved') || '[]');
+
+        // --- 功能函数 ---
+        function doSearch() {
+            const input = document.getElementById('searchInput').value.trim();
+            if (!input) return;
+
+            // 1. 查找字典 (简单匹配)
+            let rawPinyin = RAW_DICT[input];
+            
+            // 2. 如果没找到，尝试简单的单字拆分查找 (兜底)
+            if (!rawPinyin && input.length === 1) {
+                // 这里实际应该有一个庞大的单字库
+                alert("演示版词库有限，试着搜：做、书、去、你好");
+                return;
+            }
+
+            if (rawPinyin) {
+                // 3. 转换拼音
+                const finalPinyin = convertPinyin(input, rawPinyin);
+                
+                // 4. 显示结果
+                currentWord = { word: input, pinyin: finalPinyin };
+                document.getElementById('resWord').innerText = input;
+                document.getElementById('resPinyin').innerText = finalPinyin;
+                
+                document.getElementById('emptyState').classList.add('hidden');
+                document.getElementById('resultCard').classList.remove('hidden');
+                
+                updateSaveIcon();
+            } else {
+                alert("词库里暂时没有这个词 (演示版)");
+            }
+        }
+
+        function playAudio() {
+            if (!currentWord) return;
+            
+            const utterance = new SpeechSynthesisUtterance(currentWord.word);
+            utterance.lang = 'zh-HK'; // 指定粤语
+            utterance.rate = 0.8; // 慢一点
+            
+            // 尝试播放
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleSave() {
+            if (!currentWord) return;
+            
+            const index = savedWords.findIndex(w => w.word === currentWord.word);
+            if (index === -1) {
+                savedWords.unshift(currentWord); // 加到最前
+            } else {
+                savedWords.splice(index, 1); // 取消收藏
+            }
+            
+            saveToLocal();
+            updateSaveIcon();
+            renderSavedList();
+        }
+
+        function deleteSaved(word) {
+            savedWords = savedWords.filter(w => w.word !== word);
+            saveToLocal();
+            renderSavedList();
+            // 如果刚好在查这个字，也要更新图标
+            if (currentWord && currentWord.word === word) {
+                updateSaveIcon();
+            }
+        }
+
+        function saveToLocal() {
+            localStorage.setItem('canto_saved', JSON.stringify(savedWords));
+        }
+
+        function updateSaveIcon() {
+            const btn = document.getElementById('iconHeart');
+            const isSaved = savedWords.some(w => w.word === currentWord.word);
+            if (isSaved) {
+                btn.setAttribute('fill', 'currentColor');
+                btn.classList.add('text-red-500');
+                btn.classList.remove('text-slate-400');
+            } else {
+                btn.setAttribute('fill', 'none');
+                btn.classList.remove('text-red-500');
+                btn.classList.add('text-slate-400');
+            }
+            lucide.createIcons();
+        }
+
+        function renderSavedList() {
+            const list = document.getElementById('savedList');
+            const empty = document.getElementById('emptySaved');
+            list.innerHTML = '';
+
+            if (savedWords.length === 0) {
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+                
+                savedWords.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'card p-4 flex justify-between items-center';
+                    div.innerHTML = `
+                        <div onclick="quickPlay('${item.word}')" class="flex-1 cursor-pointer">
+                            <div class="font-bold text-lg text-slate-800">${item.word}</div>
+                            <div class="text-sm text-emerald-600 font-mono">${item.pinyin}</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="quickPlay('${item.word}')" class="p-2 text-emerald-600 bg-emerald-50 rounded-full btn-press">
+                                <i data-lucide="volume-2" width="18"></i>
+                            </button>
+                            <button onclick="deleteSaved('${item.word}')" class="p-2 text-slate-400 hover:text-red-500 btn-press">
+                                <i data-lucide="trash-2" width="18"></i>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+                lucide.createIcons();
+            }
+        }
+
+        function quickPlay(word) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'zh-HK';
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function switchTab(tab) {
+            const pageSearch = document.getElementById('page-search');
+            const pageSaved = document.getElementById('page-saved');
+            const tabSearch = document.getElementById('tab-search');
+            const tabSaved = document.getElementById('tab-saved');
+
+            if (tab === 'search') {
+                pageSearch.classList.remove('hidden');
+                pageSaved.classList.add('hidden');
+                tabSearch.classList.add('text-emerald-600');
+                tabSaved.classList.remove('text-emerald-600');
+            } else {
+                pageSearch.classList.add('hidden');
+                pageSaved.classList.remove('hidden');
+                renderSavedList(); // 每次切换都刷新一下
+                tabSearch.classList.remove('text-emerald-600');
+                tabSaved.classList.add('text-emerald-600');
+            }
+        }
+        
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedWords));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "my_cantonese_words.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // 初始化
+        renderSavedList();
+    </script>
+</body>
+</html>

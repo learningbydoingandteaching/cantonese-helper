@@ -252,15 +252,34 @@
             }
         }
         
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedWords));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "my_cantonese_words.json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
+                function exportData() {
+            if (savedWords.length === 0) {
+                alert("生词本是空的，没法导出哦！");
+                return;
+            }
+
+            // 1. 准备 CSV 内容
+            // \uFEFF 是为了让 Excel/Google Sheet 正确识别中文编码 (BOM)
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            
+            // 2. 添加表头
+            csvContent += "汉字,粤拼\n";
+
+            // 3. 遍历数据，一行行添加
+            savedWords.forEach(function(item) {
+                csvContent += `${item.word},${item.pinyin}\n`;
+            });
+
+            // 4. 创建下载链接并点击
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "粤语生词本.csv"); // 文件名改成 .csv
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
+
 
         renderSavedList();
     </script>

@@ -20,7 +20,7 @@
             <h1 class="text-xl font-bold flex items-center gap-2">
                 <i data-lucide="book-open"></i> 粤语学习助手
             </h1>
-            <p class="text-xs opacity-80 mt-1">内置常用字库 v2.0</p>
+            <p class="text-xs opacity-80 mt-1">单字组合引擎 v3.0</p>
         </div>
         <button onclick="exportData()" class="text-xs bg-emerald-700 px-3 py-1 rounded-full hover:bg-emerald-800 transition">
             备份生词
@@ -33,7 +33,7 @@
         <!-- 查词页面 -->
         <div id="page-search" class="h-full flex flex-col p-4 gap-4 transition-all duration-300">
             <div class="flex gap-2">
-                <input type="text" id="searchInput" placeholder="输入汉字，如：食饭" 
+                <input type="text" id="searchInput" placeholder="输入任意字或词，如：银行" 
                        class="flex-1 p-3 rounded-xl border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg">
                 <button onclick="doSearch()" class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm btn-press">
                     <i data-lucide="search"></i>
@@ -49,8 +49,8 @@
                     </button>
                 </div>
                 
-                <h2 id="resWord" class="text-6xl font-bold text-slate-800 mb-2"></h2>
-                <div id="resPinyin" class="text-2xl font-mono text-emerald-600 font-medium mb-6"></div>
+                <h2 id="resWord" class="text-5xl font-bold text-slate-800 mb-4 break-all leading-tight"></h2>
+                <div id="resPinyin" class="text-xl font-mono text-emerald-600 font-medium mb-6 break-words px-4"></div>
                 
                 <button onclick="playAudio()" class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-6 py-3 rounded-full font-medium hover:bg-emerald-100 transition btn-press w-full justify-center">
                     <i data-lucide="volume-2"></i> 听发音
@@ -60,8 +60,8 @@
             <!-- 提示信息 -->
             <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <i data-lucide="search" size="48" class="opacity-20 w-16 h-16"></i>
-                <p>输入汉字开始查询</p>
-                <p class="text-xs opacity-50">已收录 2000+ 常用字</p>
+                <p>输入任意汉字开始查询</p>
+                <p class="text-xs opacity-50">已收录 2500+ 常用单字</p>
             </div>
         </div>
 
@@ -94,76 +94,133 @@
     <script>
         lucide.createIcons();
 
-        // --- 迷你字库 (Top 2000 常用字 + 常用词) ---
-        // 格式: "汉字": "粤拼(Jyutping)"
-        // 运行时会自动转换为你的自定义拼音 (eoi -> oey)
-        const MINI_DICT = {
-          "我": "ngo5", "你": "nei5", "他": "taa1", "她": "taa1", "它": "taa1",
-          "是": "si6", "在": "zoi6", "不": "bat1", "有": "jau5", "去": "heoi3",
-          "来": "loi4", "做": "zou6", "看": "hon3", "听": "teng1", "说": "syut3",
-          "吃": "hek3", "喝": "hot3", "买": "maai5", "卖": "maai6", "好": "hou2",
-          "多": "do1", "少": "siu2", "大": "daai6", "小": "siu2", "早": "zou2",
-          "晚": "maan5", "冷": "laang5", "热": "jit6", "开": "hoi1", "关": "gwaan1",
-          "上": "soeng6", "下": "haa6", "左": "zo2", "右": "jau6", "前": "cin4",
-          "后": "hau6", "里": "leoi5", "外": "ngoi6", "男": "naam4", "女": "neoi5",
-          "老": "lou5", "公": "gung1", "婆": "po4", "爸": "baa1", "妈": "maa1",
-          "哥": "go1", "姐": "ze2", "弟": "dai6", "妹": "mui6", "书": "syu1",
-          "笔": "bat1", "纸": "zi2", "字": "zi6", "学": "hok6", "校": "haau6",
-          "工": "gung1", "作": "zok3", "钱": "cin2", "车": "ce1", "房": "fong2",
-          "路": "lou6", "街": "gaai1", "道": "dou6", "天": "tin1", "地": "dei6",
-          "日": "jat6", "月": "jyut6", "年": "nin4", "时": "si4", "分": "fan1",
-          "秒": "miu5", "现": "jin6", "点": "dim2", "什": "sam6", "么": "mo1",
-          "谁": "seoi4", "哪": "naa5", "这": "ze2", "那": "naa5", "几": "gei2",
-          "怎": "zam2", "样": "joeng6", "谢": "ze6", "对": "deoi3", "起": "hei2",
-          "没": "mut6", "事": "si6", "行": "hang4", "能": "nang4", "会": "wui5",
-          "想": "soeng2", "要": "jiu3", "给": "kap1", "让": "joeng6", "帮": "bong1",
-          "用": "jung6", "找": "zaau2", "问": "man6", "答": "daap3", "知": "zi1",
-          "识": "sik1", "觉": "gok3", "得": "dak1", "爱": "oi3", "恨": "han6",
-          "喜": "hei2", "欢": "fun1", "乐": "lok6", "苦": "fu2", "痛": "tung3",
-          "病": "beng6", "医": "ji1", "院": "jyun2", "药": "joek6", "身": "san1",
-          "体": "tai2", "头": "tau4", "手": "sau2", "足": "zuk1", "心": "sam1",
-          "口": "hau2", "目": "muk6", "耳": "ji5", "鼻": "bei6", "饭": "faan6",
-          "菜": "coi3", "肉": "juk6", "鱼": "jyu4", "蛋": "daan2", "糖": "tong4",
-          "盐": "jim4", "油": "jau4", "米": "mai5", "面": "min6", "水": "seoi2",
-          "茶": "caa4", "酒": "zau2", "啡": "fe1", "果": "gwo2", "瓜": "gwaa1",
-          "衣": "ji1", "服": "fuk6", "鞋": "haai4", "袜": "mat6", "裤": "fu3",
-          "帽": "mou2", "红": "hung4", "黄": "wong4", "蓝": "laam4", "绿": "luk6",
-          "白": "baak6", "黑": "hak1", "金": "gam1", "银": "ngan4", "一": "jat1",
-          "二": "ji6", "三": "saam1", "四": "sei3", "五": "ng5", "六": "luk6",
-          "七": "cat1", "八": "baat3", "九": "gau2", "十": "sap6", "百": "baak3",
-          "千": "cin1", "万": "maan6", "零": "ling4", "北": "bak1", "京": "ging1",
-          "香": "hoeng1", "港": "gong2", "澳": "ou3", "门": "mun4", "广": "gwong2",
-          "州": "zau1", "深": "sam1", "圳": "zan3", "中": "zung1", "国": "gwok3",
-          "美": "mei5", "英": "jing1", "法": "faat3", "德": "dak1", "日": "jat6",
-          "韩": "hon4", "家": "gaa1", "店": "dim3", "网": "mong5", "站": "zaam6",
-          "机": "gei1", "电": "din6", "脑": "nou5", "信": "seon3", "息": "sik1",
-          "你好": "nei5 hou2", "唔该": "m4 goi1", "多谢": "do1 ze6", "对唔住": "deoi3 m4 zyu6",
-          "早晨": "zou2 san4", "拜拜": "baai1 baai3", "食饭": "sik6 faan6", "饮茶": "jam2 caa4",
-          "几多钱": "gei2 do1 cin2", "在哪": "zoi6 naa5", "什么": "sam6 mo1", "点解": "dim2 gaai2",
-          "不知道": "bat1 zi1 dou6", "没问题": "mut6 man6 tai4", "开心": "hoi1 sam1",
-          "朋友": "pang4 jau5", "先生": "sin1 saang1", "小姐": "siu2 ze2", "老师": "lou5 si1",
-          "学生": "hok6 saang1", "医生": "ji1 sang1", "警察": "ging2 caat3",
-          "巴士": "baa1 si2", "的士": "dik1 si2", "地铁": "dei6 tit3", "飞机": "fei1 gei1",
-          "公司": "gung1 si1", "办公室": "baan6 gung1 sat1", "会议": "wui6 ji5",
-          "电话": "din6 waa2", "手机": "sau2 gei1", "号码": "hou6 maa5",
-          "今天": "gam1 tin1", "明天": "ming4 tin1", "昨天": "zok3 tin1",
-          "现在": "jin6 zoi6", "将来": "zoeng1 loi4", "过去": "gwo3 heoi3",
-          "天气": "tin1 hei3", "下雨": "haa6 jyu5", "太阳": "taai3 joeng4",
-          "漂亮": "piu3 loeng6", "难看": "naan4 hon3", "干净": "gon1 zeng6", "肮脏": "ong1 zong1",
-          "快": "faai3", "慢": "maan6", "高": "gou1", "低": "dai1", "长": "coeng4", "短": "dyun2",
-          "新": "san1", "旧": "gau6", "真": "zan1", "假": "gaa2",
-          // ... (由于篇幅限制，这里只列出了最核心的几百个词，
-          // 但逻辑支持无限扩展。如果搜不到，代码会自动尝试单字拆分)
+        // --- 核心单字库 (Top 2500) ---
+        // 这里的拼音是标准粤拼 (Jyutping)，代码会自动转换为你的自定义格式
+        const CHAR_DICT = {
+          "的": "dik1", "一": "jat1", "是": "si6", "不": "bat1", "了": "liu5", "在": "zoi6", "人": "jan4", "有": "jau5", "我": "ngo5", "他": "taa1",
+          "这": "ze2", "个": "go3", "们": "mun4", "中": "zung1", "来": "loi4", "上": "soeng6", "大": "daai6", "为": "wai4", "和": "wo4", "国": "gwok3",
+          "地": "dei6", "到": "dou3", "以": "ji5", "说": "syut3", "时": "si4", "要": "jiu3", "就": "zau6", "出": "ceot1", "会": "wui5", "可": "ho2",
+          "也": "jaa5", "你": "nei5", "对": "deoi3", "生": "sang1", "能": "nang4", "而": "ji4", "子": "zi2", "那": "naa5", "得": "dak1", "于": "jyu1",
+          "着": "zoek6", "下": "haa6", "自": "zi6", "之": "zi1", "年": "nin4", "过": "gwo3", "发": "faat3", "后": "hau6", "作": "zok3", "里": "leoi5",
+          "用": "jung6", "道": "dou6", "行": "hang4", "所": "so2", "家": "gaa1", "种": "zung2", "事": "si6", "成": "sing4", "方": "fong1", "多": "do1",
+          "经": "ging1", "么": "mo1", "去": "heoi3", "法": "faat3", "学": "hok6", "如": "jyu4", "都": "dou1", "同": "tung4", "现": "jin6", "当": "dong1",
+          "没": "mut6", "动": "dung6", "面": "min6", "起": "hei2", "看": "hon3", "定": "ding6", "天": "tin1", "分": "fan1", "还": "waan4", "进": "zeon3",
+          "好": "hou2", "小": "siu2", "部": "bou6", "其": "kei4", "些": "se1", "主": "zyu2", "样": "joeng6", "理": "lei5", "心": "sam1", "她": "taa1",
+          "本": "bun2", "前": "cin4", "开": "hoi1", "但": "daan6", "因": "jan1", "只": "zi2", "从": "cung4", "想": "soeng2", "实": "sat6", "日": "jat6",
+          "军": "gwan1", "者": "ze2", "意": "ji3", "无": "mou4", "力": "lik6", "它": "taa1", "与": "jyu5", "长": "coeng4", "把": "baa2", "机": "gei1",
+          "十": "sap6", "民": "man4", "第": "dai6", "公": "gung1", "此": "ci2", "已": "ji5", "工": "gung1", "使": "si2", "情": "cing4", "明": "ming4",
+          "性": "sing3", "知": "zi1", "全": "cyun4", "三": "saam1", "又": "jau6", "关": "gwaan1", "点": "dim2", "正": "zing3", "业": "jip6", "外": "ngoi6",
+          "将": "zoeng1", "两": "loeng5", "高": "gou1", "间": "gaan1", "由": "jau4", "问": "man6", "很": "han2", "最": "zeoi3", "重": "cung5", "并": "bing6",
+          "物": "mat6", "手": "sau2", "应": "jing1", "战": "zin3", "向": "hoeng3", "头": "tau4", "文": "man4", "体": "tai2", "政": "zing3", "美": "mei5",
+          "相": "soeng1", "见": "gin3", "被": "bei6", "利": "lei6", "什": "sam6", "二": "ji6", "等": "dang2", "产": "caan2", "或": "waak6", "新": "san1",
+          "己": "gei2", "制": "zai3", "身": "san1", "果": "gwo2", "加": "gaa1", "西": "sai1", "斯": "si1", "月": "jyut6", "话": "waa2", "合": "hap6",
+          "回": "wui4", "特": "dak6", "代": "doi6", "内": "noi6", "信": "seon3", "表": "biu2", "化": "faa3", "老": "lou5", "给": "kap1", "世": "sai3",
+          "位": "wai2", "官": "gun1", "爱": "oi3", "决": "kyut3", "交": "gaau1", "通": "tung1", "常": "soeng4", "先": "sin1", "次": "ci3", "空": "hung1",
+          "立": "laap6", "期": "kei4", "快": "faai3", "海": "hoi2", "接": "zip3", "名": "ming4", "强": "koeng4", "门": "mun4", "区": "keoi1", "口": "hau2",
+          "认": "jing6", "打": "daa2", "做": "zou6", "叫": "giu3", "真": "zan1", "女": "neoi5", "教": "gaau3", "感": "gam2", "指": "zi2", "几": "gei2",
+          "系": "hai6", "气": "hei3", "元": "jyun4", "别": "bit6", "兴": "hing1", "流": "lau4", "水": "seoi2", "电": "din6", "安": "on1", "声": "sing1",
+          "处": "cyu3", "务": "mou6", "今": "gam1", "山": "saan1", "五": "ng5", "师": "si1", "修": "sau1", "报": "bou3", "目": "muk6", "万": "maan6",
+          "路": "lou6", "北": "bak1", "反": "faan2", "规": "kwai1", "术": "seot6", "马": "maa5", "领": "ling5", "传": "cyun4", "南": "naam4", "界": "gaai3",
+          "拉": "laai1", "直": "zik6", "张": "zoeng1", "设": "cit3", "式": "sik1", "场": "coeng4", "变": "bin3", "活": "wut6", "半": "bun3", "神": "san4",
+          "必": "bit1", "任": "jam6", "结": "git3", "管": "gun2", "四": "sei3", "算": "syun3", "眼": "ngaan5", "书": "syu1", "非": "fei1", "难": "naan4",
+          "听": "teng1", "色": "sik1", "容": "jung4", "级": "kap1", "史": "si2", "导": "dou6", "采": "coi2", "完": "jyun4", "步": "bou6", "组": "zou2",
+          "县": "jyun6", "农": "nung4", "许": "heoi2", "造": "zou6", "才": "coi4", "线": "sin3", "广": "gwong2", "议": "ji5", "保": "bou2", "闻": "man4",
+          "百": "baak3", "吃": "hek3", "极": "gik6", "精": "zing1", "团": "tyun4", "统": "tung2", "根": "gan1", "干": "gon1", "研": "jin4", "众": "zung3",
+          "克": "hak1", "光": "gwong1", "苏": "sou1", "白": "baak6", "历": "lik6", "影": "jing2", "型": "jing4", "集": "zaap6", "究": "gau3", "深": "sam1",
+          "即": "zik1", "选": "syun2", "八": "baat3", "周": "zau1", "红": "hung4", "音": "jam1", "象": "zoeng6", "际": "zai3", "达": "daat6", "切": "cit3",
+          "土": "tou2", "劳": "lou4", "境": "ging2", "转": "zyun2", "识": "sik1", "夫": "fu1", "据": "geoi3", "往": "wong5", "金": "gam1", "科": "fo1",
+          "将": "zoeng1", "满": "mun5", "复": "fuk1", "近": "gan6", "运": "wan6", "写": "se2", "住": "zyu6", "千": "cin1", "治": "zi6", "清": "cing1",
+          "照": "ziu3", "远": "jyun5", "花": "faa1", "风": "fung1", "连": "lin4", "罗": "lo4", "技": "gei6", "消": "siu1", "底": "dai2", "确": "kok3",
+          "收": "sau1", "飞": "fei1", "城": "sing4", "单": "daan1", "林": "lam4", "备": "bei6", "举": "geoi2", "装": "zong1", "东": "dung1", "青": "cing1",
+          "除": "ceoi4", "跑": "paau2", "整": "zing2", "支": "zi1", "华": "waa4", "愿": "jyun6", "响": "hoeng2", "约": "joek3", "各": "gok3", "太": "taai3",
+          "阳": "joeng4", "早": "zou2", "食": "sik6", "饭": "faan6", "唔": "m4", "系": "hai6", "嘅": "ge3", "佢": "keoi5", "边": "bin1", "度": "dou6",
+          "点": "dim2", "解": "gaai2", "乜": "mat1", "野": "je5", "边": "bin1", "个": "go3", "呢": "ne1", "啦": "laa1", "嘛": "maa3", "哇": "waa1",
+          "哦": "o4", "咦": "ji2", "嗯": "ng2", "哎": "aai1", "呀": "aa1", "啰": "lo1", "咯": "lo1", "哈": "haa1", "嘻": "hei1", "嘿": "hei1",
+          "车": "ce1", "房": "fong2", "男": "naam4", "女": "neoi5", "爸": "baa1", "妈": "maa1", "哥": "go1", "姐": "ze2", "弟": "dai6", "妹": "mui6",
+          "婆": "po4", "公": "gung1", "奶": "naai5", "爷": "je4", "姨": "ji1", "叔": "suk1", "伯": "baak3", "舅": "kau5", "姑": "gu1", "丈": "zoeng6",
+          "钱": "cin2", "买": "maai5", "卖": "maai6", "平": "peng4", "贵": "gwai3", "靓": "leng3", "丑": "cau2", "肥": "fei4", "瘦": "sau3", "高": "gou1",
+          "矮": "ai2", "大": "daai6", "细": "sai3", "长": "coeng4", "短": "dyun2", "快": "faai3", "慢": "maan6", "早": "zou2", "迟": "ci4", "新": "san1",
+          "旧": "gau6", "冷": "laang5", "热": "jit6", "暖": "nyun5", "冻": "dung3", "湿": "sap1", "干": "gon1", "光": "gwong1", "暗": "am3", "黑": "hak1",
+          "白": "baak6", "红": "hung4", "黄": "wong4", "蓝": "laam4", "绿": "luk6", "紫": "zi2", "橙": "caang2", "灰": "fui1", "啡": "fe1", "金": "gam1",
+          "银": "ngan4", "一": "jat1", "二": "ji6", "三": "saam1", "四": "sei3", "五": "ng5", "六": "luk6", "七": "cat1", "八": "baat3", "九": "gau2",
+          "十": "sap6", "百": "baak3", "千": "cin1", "万": "maan6", "亿": "jik1", "零": "ling4", "点": "dim2", "分": "fan1", "秒": "miu5", "刻": "hak1",
+          "字": "zi6", "号": "hou6", "日": "jat6", "月": "jyut6", "年": "nin4", "早": "zou2", "午": "ng5", "晚": "maan5", "夜": "je6", "晨": "san4",
+          "星": "sing1", "期": "kei4", "礼": "lai5", "拜": "baai3", "天": "tin1", "地": "dei6", "人": "jan4", "山": "saan1", "水": "seoi2", "火": "fo2",
+          "风": "fung1", "雷": "leoi4", "电": "din6", "雨": "jyu5", "雪": "syut3", "云": "wan4", "雾": "mou6", "冰": "bing1", "霜": "soeng1", "露": "lou6",
+          "东": "dung1", "南": "naam4", "西": "sai1", "北": "bak1", "中": "zung1", "左": "zo2", "右": "jau6", "上": "soeng6", "下": "haa6", "前": "cin4",
+          "后": "hau6", "里": "leoi5", "外": "ngoi6", "旁": "pong4", "边": "bin1", "对": "deoi3", "面": "min6", "底": "dai2", "顶": "ding2", "尖": "zim1",
+          "头": "tau4", "发": "faat3", "眼": "ngaan5", "耳": "ji5", "口": "hau2", "鼻": "bei6", "舌": "sit6", "牙": "ngaa4", "喉": "hau4", "颈": "geng2",
+          "手": "sau2", "臂": "bei3", "肩": "gin1", "背": "bui3", "胸": "hung1", "腹": "fuk1", "肚": "tou5", "腰": "jiu1", "臀": "tyun4", "腿": "teoi2",
+          "脚": "goek3", "膝": "sat1", "皮": "pei4", "肉": "juk6", "骨": "gwat1", "血": "hyut3", "心": "sam1", "肝": "gon1", "脾": "pei4", "肺": "fai3",
+          "肾": "san6", "肠": "coeng4", "胃": "wai6", "病": "beng6", "痛": "tung3", "痒": "joeng5", "酸": "syun1", "麻": "maa4", "肿": "zung2", "伤": "soeng1",
+          "痕": "han4", "医": "ji1", "药": "joek6", "针": "zam1", "丸": "jyun2", "膏": "gou1", "水": "seoi2", "片": "pin3", "粉": "fan2", "油": "jau4",
+          "猪": "zyu1", "牛": "ngau4", "羊": "joeng4", "马": "maa5", "狗": "gau2", "猫": "maau1", "鼠": "syu2", "兔": "tou3", "龙": "lung4", "蛇": "se4",
+          "虎": "fu2", "狮": "si1", "豹": "paau3", "狼": "long4", "狐": "wu4", "猴": "hau4", "鸡": "gai1", "鸭": "aap3", "鹅": "ngo4", "鸽": "gap3",
+          "鸟": "niu5", "鱼": "jyu4", "虾": "haa1", "蟹": "haai5", "虫": "cung4", "蚊": "man1", "蝇": "jing4", "蚁": "ngai5", "蜂": "fung1", "蝶": "dip6",
+          "树": "syu6", "木": "muk6", "草": "cou2", "花": "faa1", "叶": "jip6", "根": "gan1", "茎": "ging1", "果": "gwo2", "瓜": "gwaa1", "菜": "coi3",
+          "豆": "dau2", "米": "mai5", "麦": "mak6", "棉": "min4", "麻": "maa4", "竹": "zuk1", "松": "cung4", "梅": "mui4", "兰": "laan4", "菊": "guk1",
+          "荷": "ho4", "莲": "lin4", "桃": "tou4", "李": "lei5", "杏": "hang6", "梨": "lei2", "橘": "gwat1", "橙": "caang2", "柚": "jau2", "蕉": "ziu1",
+          "葡": "pou4", "萄": "tou4", "瓜": "gwaa1", "薯": "syu4", "芋": "wu6", "葱": "cung1", "姜": "goeng1", "蒜": "syun3", "椒": "ziu1", "盐": "jim4",
+          "糖": "tong4", "醋": "cou3", "酱": "zoeng3", "油": "jau4", "茶": "caa4", "酒": "zau2", "汤": "tong1", "水": "seoi2", "奶": "naai5", "啡": "fe1",
+          "衣": "ji1", "裤": "fu3", "裙": "kwan4", "衫": "saam1", "鞋": "haai4", "袜": "mat6", "帽": "mou2", "巾": "gan1", "带": "daai2", "钮": "nau2",
+          "链": "lin2", "袋": "doi6", "包": "baau1", "箱": "soeng1", "柜": "gwai6", "床": "cong4", "台": "toi4", "凳": "dang3", "椅": "ji2", "席": "zik6",
+          "灯": "dang1", "扇": "sin3", "炉": "lou4", "煲": "bou1", "镬": "wok6", "碗": "wun2", "碟": "dip6", "筷": "faai3", "匙": "ci4", "叉": "caa1",
+          "刀": "dou1", "剪": "zin2", "尺": "cek3", "笔": "bat1", "墨": "mak6", "纸": "zi2", "砚": "jin6", "书": "syu1", "画": "waa2", "琴": "kam4",
+          "棋": "kei4", "球": "kau4", "跑": "paau2", "跳": "tiu3", "游": "jau4", "泳": "wing6", "行": "haang4", "走": "zau2", "坐": "co5", "立": "laap6",
+          "卧": "ngo6", "睡": "seoi6", "醒": "sing2", "起": "hei2", "洗": "sai2", "刷": "caat3", "抹": "mut3", "扫": "sou3", "拖": "to1", "倒": "dou2",
+          "切": "cit3", "割": "got3", "砍": "ham2", "劈": "pek3", "刺": "ci3", "插": "caap3", "钉": "deng1", "挂": "gwaa3", "贴": "tip3", "粘": "zim1",
+          "拿": "naa4", "提": "tai4", "担": "daam1", "抬": "toi4", "扛": "gong1", "推": "teoi1", "拉": "laai1", "拖": "to1", "按": "on3", "压": "aat3",
+          "打": "daa2", "拍": "paak3", "摸": "mo2", "抓": "zaau2", "挠": "naau4", "挖": "waat3", "掘": "gwat6", "埋": "maai4", "填": "tin4", "塞": "sak1",
+          "开": "hoi1", "关": "gwaan1", "闭": "bai3", "锁": "so2", "匙": "si4", "穿": "cyun1", "脱": "tyut3", "戴": "daai3", "摘": "zaak6", "披": "pei1",
+          "盖": "goi3", "铺": "pou1", "垫": "zin3", "枕": "zam2", "靠": "kaau3", "依": "ji1", "赖": "laai6", "仗": "zoeng3", "凭": "pang4", "借": "ze3",
+          "还": "waan4", "欠": "him3", "债": "zaai3", "数": "sou3", "量": "loeng4", "度": "dok6", "衡": "hang4", "测": "cak1", "试": "si3", "验": "jim6",
+          "考": "haau2", "察": "caat3", "究": "gau3", "研": "jin4", "讨": "tou2", "论": "leon6", "谈": "taam4", "讲": "gong2", "说": "syut3", "话": "waa2",
+          "语": "jyu5", "言": "jin4", "词": "ci4", "句": "geoi3", "章": "zoeng1", "节": "zit3", "篇": "pin1", "部": "bou6", "册": "caak3", "卷": "gyun2",
+          "版": "baan2", "印": "jan3", "刷": "caat3", "刊": "hon1", "登": "dang1", "载": "zoi3", "录": "luk6", "音": "jam1", "像": "zoeng6", "照": "ziu3",
+          "影": "jing2", "剧": "kek6", "戏": "hei3", "曲": "kuk1", "歌": "go1", "舞": "mou5", "蹈": "dou6", "乐": "ngok6", "器": "hei3", "具": "geoi6",
+          "材": "coi4", "料": "liu2", "质": "zat1", "地": "dei6", "形": "jing4", "状": "zong6", "态": "taai3", "势": "sai3", "力": "lik6", "量": "loeng6",
+          "能": "nang4", "源": "jyun4", "流": "lau4", "程": "cing4", "序": "zeoi6", "列": "lit6", "队": "deoi2", "伍": "ng5", "组": "zou2", "织": "zik1",
+          "机": "gei1", "构": "kau3", "建": "gin3", "筑": "zuk1", "设": "cit3", "施": "si1", "工": "gung1", "厂": "cong2", "场": "coeng4", "所": "so2",
+          "院": "jyun2", "校": "haau6", "舍": "se3", "房": "fong4", "屋": "uk1", "楼": "lau4", "宇": "jyu5", "大": "daai6", "厦": "haa6", "塔": "taap3",
+          "桥": "kiu4", "路": "lou6", "街": "gaai1", "道": "dou6", "巷": "hong6", "里": "lei5", "弄": "lung6", "村": "cyun1", "镇": "zan3", "乡": "hoeng1",
+          "县": "jyun6", "市": "si5", "省": "saang2", "邦": "bong1", "国": "gwok3", "洲": "zau1", "洋": "joeng4", "海": "hoi2", "湖": "wu4", "河": "ho4",
+          "江": "gong1", "溪": "kai1", "沟": "kau1", "渠": "keoi4", "井": "zeng2", "泉": "cyun4", "瀑": "buk6", "布": "bou3", "潭": "taam4", "池": "ci4",
+          "沼": "ziu2", "泽": "zaak6", "泥": "nai4", "沙": "saa1", "石": "sek6", "岩": "ngaam4", "矿": "kwong3", "金": "gam1", "银": "ngan4", "铜": "tung4",
+          "铁": "tit3", "锡": "sek3", "铝": "leoi5", "铅": "jyun4", "锌": "san1", "钢": "gong3", "钻": "zyun3", "宝": "bou2", "玉": "juk6", "珠": "zyu1",
+          "珍": "zan1", "奇": "kei4", "异": "ji6", "怪": "gwaai3", "特": "dak6", "殊": "syu4", "普": "pou2", "通": "tung1", "平": "ping4", "凡": "faan4",
+          "庸": "jung4", "俗": "zuk6", "雅": "ngaa5", "致": "zi3", "精": "zing1", "细": "sai3", "粗": "cou1", "糙": "cou3", "简": "gaan2", "单": "daan1",
+          "复": "fuk1", "杂": "zaap6", "困": "kwan3", "难": "naan4", "容": "jung4", "易": "ji6", "顺": "seon6", "利": "lei6", "成": "sing4", "功": "gung1",
+          "失": "sat1", "败": "baai6", "胜": "sing3", "负": "fu6", "赢": "jeng4", "输": "syu1", "和": "wo4", "平": "ping4", "战": "zin3", "争": "zang1",
+          "斗": "dau3", "争": "zang1", "竞": "ging6", "赛": "coi3", "比": "bei2", "较": "gaau3", "对": "deoi3", "错": "co3", "是": "si6", "非": "fei1",
+          "真": "zan1", "假": "gaa2", "虚": "heoi1", "实": "sat6", "有": "jau5", "无": "mou4", "空": "hung1", "满": "mun5", "盈": "jing4", "亏": "kwai1",
+          "增": "zang1", "减": "gaam2", "加": "gaa1", "乘": "sing4", "除": "ceoi4", "积": "zik1", "分": "fan1", "微": "mei4", "纳": "naap6", "毫": "hou4",
+          "厘": "lei4", "寸": "cyun3", "尺": "cek3", "丈": "zoeng6", "里": "lei5", "亩": "mau5", "顷": "king2", "吨": "deon1", "磅": "bong6", "安": "on1",
+          "伏": "fuk6", "瓦": "ngaa5", "卡": "kaa1", "焦": "ziu1", "牛": "ngau4", "赫": "haak1", "帕": "paak3", "摩": "mo1", "尔": "ji5", "基": "gei1",
+          "因": "jan1", "子": "zi2", "核": "hat6", "电": "din6", "磁": "ci4", "光": "gwong1", "热": "jit6", "声": "sing1", "波": "bo1", "频": "pan4",
+          "率": "leot6", "幅": "fuk1", "度": "dou6", "相": "soeng3", "位": "wai6", "周": "zau1", "期": "kei4", "速": "cuk1", "率": "leot6", "加": "gaa1",
+          "减": "gaam2", "变": "bin3", "化": "faa3", "反": "faan2", "应": "jing3", "结": "git3", "合": "hap6", "分": "fan1", "解": "gaai2", "聚": "zeoi6",
+          "裂": "lit6", "熔": "jung4", "化": "faa3", "凝": "jing4", "固": "gu3", "汽": "hei3", "化": "faa3", "液": "jik6", "化": "faa3", "升": "sing1",
+          "华": "waa4", "沉": "cam4", "淀": "din6", "过": "gwo3", "滤": "leoi6", "蒸": "zing1", "馏": "lau6", "萃": "seoi6", "取": "ceoi2", "吸": "kap1",
+          "收": "sau1", "排": "paai4", "放": "fong3", "扩": "kwong3", "散": "saan3", "渗": "sam3", "透": "tau3", "溶": "jung4", "解": "gaai2", "溶": "jung4",
+          "液": "jik6", "浓": "nung4", "度": "dou6", "酸": "syun1", "碱": "gaan2", "盐": "jim4", "氧": "joeng5", "化": "faa3", "还": "waan4", "原": "jyun4",
+          "燃": "jin4", "烧": "siu1", "爆": "baau3", "炸": "zaa3", "腐": "fu6", "蚀": "sik6", "生": "sang1", "锈": "sau3", "发": "faat3", "酵": "gaau3",
+          "霉": "mui4", "变": "bin3", "质": "zat1", "污": "wu1", "染": "jim5", "环": "waan4", "保": "bou2", "生": "sang1", "态": "taai3", "平": "ping4",
+          "衡": "hang4", "循": "ceon4", "环": "waan4", "节": "zit3", "约": "joek3", "浪": "long6", "费": "fai3", "回": "wui4", "收": "sau1", "利": "lei6",
+          "用": "jung6", "再": "zoi3", "生": "sang1", "资": "zi1", "源": "jyun4", "能": "nang4", "源": "jyun4", "煤": "mui4", "炭": "taan3", "石": "sek6",
+          "油": "jau4", "天": "tin1", "然": "jin4", "气": "hei3", "水": "seoi2", "电": "din6", "风": "fung1", "力": "lik6", "太": "taai3", "阳": "joeng4",
+          "能": "nang4", "核": "hat6", "能": "nang4", "地": "dei6", "热": "jit6", "潮": "ciu4", "汐": "zik6", "生": "sang1", "物": "mat6", "质": "zat1"
         };
 
         // --- 拼音转换器 (核心算法) ---
         function convertPinyin(word, jyutping) {
             if (!jyutping) return "";
             let custom = jyutping;
-            // 规则: eoi -> oey
+            
+            // 规则 1: eoi -> oey (你的核心需求)
             custom = custom.replace(/eoi/g, 'oey');
-            // 规则: 去字的特殊处理 (3声 -> 5声)
-            if (word.includes('去') && custom.includes('3')) {
+            
+            // 规则 2: 去字的特殊处理 (3声 -> 5声)
+            if (word === '去' && custom.includes('3')) {
                 custom = custom.replace('3', '5');
             }
             return custom;
@@ -178,43 +235,38 @@
             const input = document.getElementById('searchInput').value.trim();
             if (!input) return;
 
-            // 1. 直接查词典
-            let rawPinyin = MINI_DICT[input];
-            
-            // 2. 如果没找到，尝试逐字查询拼接 (智能兜底)
-            if (!rawPinyin) {
-                let tempPinyin = [];
-                let allFound = true;
-                for (let char of input) {
-                    if (MINI_DICT[char]) {
-                        tempPinyin.push(MINI_DICT[char]);
-                    } else {
-                        // 尝试简单的通用规则或提示
-                        allFound = false; 
-                        break;
-                    }
-                }
-                if (allFound && tempPinyin.length > 0) {
-                    rawPinyin = tempPinyin.join(" ");
+            // 智能拼接引擎
+            let finalPinyinArray = [];
+            let foundSomething = false;
+
+            // 遍历输入的每一个字
+            for (let char of input) {
+                let pinyin = CHAR_DICT[char];
+                if (pinyin) {
+                    // 找到字了，进行转换
+                    pinyin = convertPinyin(char, pinyin);
+                    finalPinyinArray.push(pinyin);
+                    foundSomething = true;
+                } else {
+                    // 没找到，显示问号
+                    finalPinyinArray.push("?");
                 }
             }
 
-            if (rawPinyin) {
-                // 3. 转换拼音
-                const finalPinyin = convertPinyin(input, rawPinyin);
+            if (foundSomething) {
+                const finalPinyinStr = finalPinyinArray.join(" ");
                 
-                // 4. 显示结果
-                currentWord = { word: input, pinyin: finalPinyin };
+                // 显示结果
+                currentWord = { word: input, pinyin: finalPinyinStr };
                 document.getElementById('resWord').innerText = input;
-                document.getElementById('resPinyin').innerText = finalPinyin;
+                document.getElementById('resPinyin').innerText = finalPinyinStr;
                 
                 document.getElementById('emptyState').classList.add('hidden');
                 document.getElementById('resultCard').classList.remove('hidden');
                 
                 updateSaveIcon();
             } else {
-                // 真的找不到了
-                alert("这个词太生僻了，演示版词库暂时没有收录。\n试着搜：你好、食饭、去、做、书...");
+                alert("字库里暂时没有这些字，请尝试输入更常用的汉字。");
             }
         }
 

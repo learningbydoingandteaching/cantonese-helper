@@ -2,29 +2,43 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 优化视口设置，禁止用户缩放，体验更像 App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>粤语学习助手</title>
+    
+    <!-- PWA 配置：告诉手机这是一个 App -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS 专用配置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="粤语助手">
+    <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/icons/book-open.svg">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" rel="stylesheet">
-    <!-- 关键点：在这里加载字典文件 -->
     <script src="dictionary.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #f8fafc; 
+            /* 适配 iPhone 刘海屏 */
+            padding-top: env(safe-area-inset-top);
+        }
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .btn-press:active { transform: scale(0.95); }
-        /* 防止底部内容被菜单遮挡 */
-        #page-saved { padding-bottom: 100px; } 
+        #page-saved { padding-bottom: 120px; } 
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- 顶部导航 -->
-    <div class="bg-emerald-600 text-white p-4 pt-12 pb-6 shadow-md flex justify-between items-center z-10">
+    <div class="bg-emerald-600 text-white p-4 pt-4 shadow-md flex justify-between items-center z-10">
         <div>
             <h1 class="text-xl font-bold flex items-center gap-2">
                 <i data-lucide="book-open"></i> 粤语学习助手
             </h1>
-            <p class="text-xs opacity-80 mt-1">v7.0 最终稳定版</p>
+            <p class="text-xs opacity-80 mt-1">v8.0 PWA 增强版</p>
         </div>
         <button onclick="exportData()" class="text-xs bg-emerald-700 px-3 py-1 rounded-full hover:bg-emerald-800 transition">
             备份生词
@@ -81,8 +95,8 @@
 
     </div>
 
-    <!-- 底部 Tab (强制固定) -->
-    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-2 pb-6 flex justify-around text-xs text-slate-500 font-medium z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+    <!-- 底部 Tab -->
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-2 pb-8 flex justify-around text-xs text-slate-500 font-medium z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <button onclick="switchTab('search')" id="tab-search" class="flex flex-col items-center gap-1 p-2 text-emerald-600 w-full">
             <i data-lucide="search"></i> 查词典
         </button>
@@ -96,19 +110,17 @@
     <script>
         lucide.createIcons();
 
-        // 检查字典是否加载成功
         window.onload = function() {
             const statusEl = document.getElementById('dictStatus');
             if (window.CHAR_DICT) {
                 const count = Object.keys(window.CHAR_DICT).length;
                 statusEl.innerText = `已加载 ${count} 个汉字`;
             } else {
-                statusEl.innerText = "⚠️ 字典文件加载失败，请检查 dictionary.js";
+                statusEl.innerText = "⚠️ 字典文件加载失败";
                 statusEl.classList.add("text-red-500");
             }
         };
 
-        // --- 拼音转换器 ---
         function convertPinyin(word, jyutping) {
             if (!jyutping) return "";
             let custom = jyutping;
@@ -117,31 +129,25 @@
             return custom;
         }
 
-        // --- 应用状态 (修复版：防弹读取逻辑) ---
         let currentWord = null;
         let savedWords = [];
 
-        // 尝试安全读取数据
         try {
             const localData = localStorage.getItem('canto_saved');
             if (localData) {
                 savedWords = JSON.parse(localData);
-                console.log("成功读取生词本，数量:", savedWords.length);
             }
         } catch (e) {
-            console.error("读取生词本失败，重置为空", e);
+            console.error("读取生词本失败", e);
             savedWords = [];
         }
 
-        // --- 功能函数 ---
         function doSearch() {
             const input = document.getElementById('searchInput').value.trim();
             if (!input) return;
-
             const DICT = window.CHAR_DICT || {};
             let finalPinyinArray = [];
             let foundSomething = false;
-
             for (let char of input) {
                 let pinyin = DICT[char];
                 if (pinyin) {
@@ -152,7 +158,6 @@
                     finalPinyinArray.push("?");
                 }
             }
-
             if (foundSomething) {
                 const finalPinyinStr = finalPinyinArray.join(" ");
                 currentWord = { word: input, pinyin: finalPinyinStr };
@@ -162,7 +167,7 @@
                 document.getElementById('resultCard').classList.remove('hidden');
                 updateSaveIcon();
             } else {
-                alert("未找到该字，请确认 dictionary.js 是否上传成功。");
+                alert("未找到该字");
             }
         }
 
@@ -196,7 +201,7 @@
             try {
                 localStorage.setItem('canto_saved', JSON.stringify(savedWords));
             } catch (e) {
-                alert("保存失败：可能是手机存储空间不足或处于无痕模式");
+                alert("保存失败：存储空间不足");
             }
         }
 
@@ -268,7 +273,6 @@
             }
         }
         
-        // 导出 CSV (Google Sheet 可读)
         function exportData() {
             if (savedWords.length === 0) {
                 alert("生词本是空的，没法导出哦！");

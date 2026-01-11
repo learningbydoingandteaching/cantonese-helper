@@ -12,6 +12,8 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; }
         .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .btn-press:active { transform: scale(0.95); }
+        /* 防止底部内容被菜单遮挡 */
+        #page-saved { padding-bottom: 100px; } 
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -22,7 +24,7 @@
             <h1 class="text-xl font-bold flex items-center gap-2">
                 <i data-lucide="book-open"></i> 粤语学习助手
             </h1>
-            <p class="text-xs opacity-80 mt-1">v6.0 漏斗学习版</p>
+            <p class="text-xs opacity-80 mt-1">v7.0 最终稳定版</p>
         </div>
         <button onclick="exportData()" class="text-xs bg-emerald-700 px-3 py-1 rounded-full hover:bg-emerald-800 transition">
             备份生词
@@ -68,7 +70,7 @@
         </div>
 
         <!-- 生词本页面 -->
-        <div id="page-saved" class="h-full flex flex-col p-4 gap-4 hidden overflow-y-auto pb-24">
+        <div id="page-saved" class="h-full flex flex-col p-4 gap-4 hidden overflow-y-auto">
             <h2 class="font-bold text-slate-700 text-lg">我的生词本</h2>
             <div id="savedList" class="flex flex-col gap-3"></div>
             <div id="emptySaved" class="hidden flex-col items-center justify-center text-slate-400 gap-2 py-20">
@@ -79,7 +81,7 @@
 
     </div>
 
-    <!-- 底部 Tab (已修改：强制固定在底部) -->
+    <!-- 底部 Tab (强制固定) -->
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-2 pb-6 flex justify-around text-xs text-slate-500 font-medium z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <button onclick="switchTab('search')" id="tab-search" class="flex flex-col items-center gap-1 p-2 text-emerald-600 w-full">
             <i data-lucide="search"></i> 查词典
@@ -88,7 +90,6 @@
             <i data-lucide="book-open"></i> 生词本
         </button>
     </div>
-
 
     <!-- 核心逻辑 -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -111,23 +112,33 @@
         function convertPinyin(word, jyutping) {
             if (!jyutping) return "";
             let custom = jyutping;
-            custom = custom.replace(/eoi/g, 'oey'); // 你的自定义规则
+            custom = custom.replace(/eoi/g, 'oey'); 
             if (word === '去' && custom.includes('3')) custom = custom.replace('3', '5');
             return custom;
         }
 
-        // --- 应用状态 ---
+        // --- 应用状态 (修复版：防弹读取逻辑) ---
         let currentWord = null;
-        let savedWords = JSON.parse(localStorage.getItem('canto_saved') || '[]');
+        let savedWords = [];
+
+        // 尝试安全读取数据
+        try {
+            const localData = localStorage.getItem('canto_saved');
+            if (localData) {
+                savedWords = JSON.parse(localData);
+                console.log("成功读取生词本，数量:", savedWords.length);
+            }
+        } catch (e) {
+            console.error("读取生词本失败，重置为空", e);
+            savedWords = [];
+        }
 
         // --- 功能函数 ---
         function doSearch() {
             const input = document.getElementById('searchInput').value.trim();
             if (!input) return;
 
-            // 确保字典已加载
             const DICT = window.CHAR_DICT || {};
-
             let finalPinyinArray = [];
             let foundSomething = false;
 
@@ -182,7 +193,11 @@
         }
 
         function saveToLocal() {
-            localStorage.setItem('canto_saved', JSON.stringify(savedWords));
+            try {
+                localStorage.setItem('canto_saved', JSON.stringify(savedWords));
+            } catch (e) {
+                alert("保存失败：可能是手机存储空间不足或处于无痕模式");
+            }
         }
 
         function updateSaveIcon() {
@@ -253,34 +268,25 @@
             }
         }
         
-                function exportData() {
+        // 导出 CSV (Google Sheet 可读)
+        function exportData() {
             if (savedWords.length === 0) {
                 alert("生词本是空的，没法导出哦！");
                 return;
             }
-
-            // 1. 准备 CSV 内容
-            // \uFEFF 是为了让 Excel/Google Sheet 正确识别中文编码 (BOM)
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            
-            // 2. 添加表头
             csvContent += "汉字,粤拼\n";
-
-            // 3. 遍历数据，一行行添加
             savedWords.forEach(function(item) {
                 csvContent += `${item.word},${item.pinyin}\n`;
             });
-
-            // 4. 创建下载链接并点击
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "粤语生词本.csv"); // 文件名改成 .csv
+            link.setAttribute("download", "粤语生词本.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
-
 
         renderSavedList();
     </script>
